@@ -1,13 +1,20 @@
+// I had some coding that chat gbt improved.
+
 let stars = [];
 let spaceshipX, spaceshipY;
 let spaceshipSpeedX = 0;
-let spaceshipGravity = 3; // gravity
+let spaceshipSpeedY = 0; // vertical speed
+let spaceshipGravity = 0.1; // gravity
 let moonSurfaceY = 500; // moon surface Y position
 let spaceshipSize = 60; // spaceship size
 let gameStarted = false; // variable to track if the game has started
 let spaceshipLanded = false; // variable to track if the spaceship has landed
 let coins = []; // array to store coins
 let score = 0; // player's score
+let thrust = -0.2; // thrust force
+let thrustUsed = false; // track if thrust was used
+let maxSafeLandingSpeed = 5; // max safe landing speed
+let landedSuccessfully = false; // track if the landing was successful
 
 function setup() {
    createCanvas(800, 600);
@@ -25,7 +32,7 @@ function setup() {
    }
 
    //  coins
-   for (let i = 0; i < 10; i++) {
+   for (let i = 0; i < 20; i++) {
       const coin = {
          x: Math.floor(Math.random() * width),
          y: Math.floor(Math.random() * height)
@@ -47,7 +54,7 @@ function startScreen() {
    fill(255);
    textSize(24);
    textAlign(CENTER, CENTER);
-   text("Press ENTER to start game. Collect coins.", width / 2, height / 2);
+   text("Press ENTER to start game. Use THRUST to avoid crashing and collect coins.", width / 2, height / 2);
 }
 
 function gamePlay() {
@@ -81,27 +88,45 @@ function gamePlay() {
    fill(255,192,203);
    stroke(255,192,203);
    ellipse(spaceshipX, spaceshipY, spaceshipSize, spaceshipSize * 2);
+   stroke(0,0,0);
    fill(255,255,255);
    ellipse(spaceshipX, spaceshipY - 30, spaceshipSize / 2, spaceshipSize / 2);
    fill(0,0,0);
    ellipse(spaceshipX, spaceshipY - 30, spaceshipSize / 3, spaceshipSize / 3);
   
-   //  thrust force
+   //  thrust control
    if (keyIsDown(UP_ARROW)) {
-      spaceshipY += -2; 
+      spaceshipSpeedY += thrust; // apply thrust to counter gravity
+      thrustUsed = true; // mark that thrust was used
    }
 
-   // gravity to spaceship
-   if (spaceshipY < moonSurfaceY && gameStarted && !spaceshipLanded) {
-      spaceshipY += spaceshipGravity;
-   } else if (!spaceshipLanded) {
-      spaceshipY = moonSurfaceY; // spaceship Y position to moon surface
-      spaceshipLanded = true; // spaceship has landed
-   }
+   // gravity effect
+   spaceshipSpeedY += spaceshipGravity;
 
    // spaceship position based on speed
+   spaceshipY += spaceshipSpeedY;
    spaceshipX += spaceshipSpeedX;
 
+   // Display velocity
+   fill(255);
+   textSize(16);
+   textAlign(LEFT);
+   text("Velocity: " + spaceshipSpeedY.toFixed(2), 10, 20);
+
+   // prevent spaceship from going below the moon surface
+   if (spaceshipY >= moonSurfaceY) {
+      spaceshipY = moonSurfaceY;
+      spaceshipLanded = true;
+
+      //help from chat gbt
+
+      // Check if the spaceship landed within the safe velocity
+      if (thrustUsed && Math.abs(spaceshipSpeedY) < maxSafeLandingSpeed) {
+         landedSuccessfully = true;
+      } else {
+         landedSuccessfully = false;
+      }
+   }
 
    // Check for collisions between spaceship and coins
    for (let i = coins.length - 1; i >= 0; i--) {
@@ -111,28 +136,32 @@ function gamePlay() {
       }
    }
 
-   // Display result scene if the spaceship has landed
+   // Landing condition, I wrote the following and chat gbt improved it
    if (spaceshipLanded) {
       fill(255);
       textSize(32);
       textAlign(CENTER, CENTER);
-      if (score >= 3) {
-         text("Landed successfully", width / 2, height / 2);
+      if (landedSuccessfully) {
+         text("Landed successfully!", width / 2, height / 2);
+      } else if (!thrustUsed) {
+         text("Crashed! No thrust used.", width / 2, height / 2);
       } else {
-         text("You lost. Try again.", width / 2, height / 2);
+         text("Crashed! Speed too high.", width / 2, height / 2);
       }
       text("Score: " + score, width / 2, height / 2 + 50);
       text("Press SPACE to restart", width / 2, height / 2 + 100);
+      spaceshipSpeedY = 0; // Stop movement after landing
    }
 }
 
 function keyPressed() {
    if (!gameStarted && keyCode === ENTER) {
       gameStarted = true; // Start the game when ENTER key is pressed
-      // Reset spaceship position to initial higher position
+      // Reset spaceship position and state
       spaceshipY = 100;
-      spaceshipLanded = false; // Reset spaceship landed state
-      // Reset score
+      spaceshipSpeedY = 0;
+      spaceshipLanded = false; 
+      thrustUsed = false; // Reset thrust used flag
       score = 0;
    } else if (keyCode === LEFT_ARROW) {
       spaceshipSpeedX = -5;
@@ -153,7 +182,9 @@ function restartGame() {
    gameStarted = false;
    spaceshipX = width / 2;
    spaceshipY = 100;
+   spaceshipSpeedY = 0;
    spaceshipLanded = false;
+   thrustUsed = false; // Reset thrust used flag
 
    //  new coins
    coins = [];
@@ -165,3 +196,4 @@ function restartGame() {
       coins.push(coin);
    }
 }
+
